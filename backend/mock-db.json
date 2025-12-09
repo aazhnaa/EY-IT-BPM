@@ -1,0 +1,16 @@
+{
+  "1234567890": {
+    "doctor_name": "Dr. John Doe",
+    "state_license_status": "Active",
+    "google_maps_rating": 4.8,
+    "google_phone": "555-0199",
+    "notes": "Verified via State Board"
+  },
+  "1134527302": {
+    "doctor_name": "JESSICA BONET MS",
+    "state_license_status": "Active",
+    "google_maps_rating": 4.5,
+    "google_phone": "212-674-9120",
+    "notes": "Verified via State Board"
+  }
+}
