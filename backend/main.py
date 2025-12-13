@@ -1,48 +1,43 @@
-# backend/main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel
-import utils # Imports your existing logic
+# Import your new Orchestrator
+from agents.directory_management_agent import DirectoryManagementAgent
 import shutil
 import os
-import json
+from dotenv import load_dotenv
 
-app = FastAPI(title="Provider Validator API")
+# Load Environment
+load_dotenv()
 
-class ValidationResponse(BaseModel):
-    extracted: dict
-    official: dict
-    validation_result: dict
+app = FastAPI(title="Provider Validator Agent System")
 
-@app.get("/")
-def health_check():
-    return {"status": "running", "service": "Backend API"}
+# Initialize the Master Agent
+try:
+    manager = DirectoryManagementAgent()
+except Exception as e:
+    print(f"❌ Startup Error: {e}")
+    manager = None
 
 @app.post("/validate_document")
 async def validate_document(file: UploadFile = File(...)):
-    """
-    Receives a file, runs Gemini extraction + NPI validation, returns JSON.
-    """
+    if not manager:
+        raise HTTPException(status_code=500, detail="Agent System not initialized")
+
+    temp_filename = f"temp_{file.filename}"
+    
     try:
-        # 1. Save the uploaded file temporarily so Gemini can read it
-        temp_filename = f"temp_{file.filename}"
+        # Save File
         with open(temp_filename, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Run the Agentic Workflow (using your existing utils)
-        # We need to open the file again as a binary object for your util function
-            # We assume your utils.extract_data_with_gemini takes a file-like object
-            # You might need to adjust utils.py slightly to accept raw bytes or a path
-            # For now, let's assume we pass the file object
-            print(f"DEBUG: sending {temp_filename} to Gemini...")
-        extracted_data = utils.extract_data_with_gemini(temp_filename)
-
-        # 3. Validate
-        report = utils.validate_provider(extracted_data)
-
-        # 4. Cleanup
-        os.remove(temp_filename)
-
+        # Delegate to the Master Agent
+        report = manager.process_application(temp_filename)
         return report
 
     except Exception as e:
+        print(f"SERVER ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+        
+    finally:
+        # Cleanup
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
